@@ -26,7 +26,7 @@ CLI-панель для [naiveproxy](https://github.com/klzgrad/naiveproxy) — 
 ## Установка
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mat-674/naive-panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/mat-674/naive-panel/refs/heads/master/install.sh | sudo bash
 ```
 
 После установки запустите интерактивный сетап:
