@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-REPO_URL="${NAIVE_PANEL_REPO:-https://github.com/PLACEHOLDER/naive-panel.git}"
+REPO_URL="${NAIVE_PANEL_REPO:-https://github.com/mat-674/naive-panel.git}"
 PANEL_DIR="/opt/naive-panel"
 BIN_OUT="/usr/local/bin/naive"
 

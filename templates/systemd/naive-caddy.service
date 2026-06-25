@@ -1,6 +1,6 @@
 [Unit]
 Description=Naive-Panel Caddy (naiveproxy forward proxy)
-Documentation=https://github.com/PLACEHOLDER/naive-panel
+Documentation=https://github.com/mat-674/naive-panel
 After=network-online.target
 Wants=network-online.target
 

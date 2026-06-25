@@ -10,12 +10,12 @@
 ## Шаг 2. Установка одной командой
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PLACEHOLDER/naive-panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/mat-674/naive-panel/main/install.sh | sudo bash
 ```
 
 Что делает:
 1. `apt install -y jq qrencode ufw curl git vnstat openssl`
-2. `git clone https://github.com/PLACEHOLDER/naive-panel /opt/naive-panel`
+2. `git clone https://github.com/mat-674/naive-panel /opt/naive-panel`
 3. Склеивает `naive` + `lib/*.sh` → `/usr/local/bin/naive`
 4. Устанавливает systemd unit и logrotate
 5. Подсказывает следующий шаг
