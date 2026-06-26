@@ -162,12 +162,14 @@ bootstrap_all() {
   build_caddy      || die "caddy build failed"
   setcap_caddy     || die "setcap failed"
 
-  # Финальная проверка
-  if "$NAIVE_BIN" version 2>/dev/null | grep -q "forwardproxy"; then
-    log_ok "caddy ready: $("$NAIVE_BIN" version | tr '\n' ' ')"
+  # Финальная проверка. Caddy 2.7+ не печатает плагины в `version`,
+  # поэтому используем `list-modules` — надёжный индикатор.
+  if "$NAIVE_BIN" list-modules 2>/dev/null | grep -qi "forwardproxy"; then
+    log_ok "caddy ready (forwardproxy plugin detected)"
   else
-    log_warn "caddy built but forwardproxy plugin not detected in version output"
-    log_warn "check: $NAIVE_BIN version"
+    log_warn "caddy built but forwardproxy plugin not detected"
+    log_warn "check: $NAIVE_BIN list-modules | grep -i forwardproxy"
+    return 1
   fi
 }
 

@@ -18,12 +18,13 @@ log_step()  { printf "\n%s==>%s %s\n" "$C_BLD$C_BLU" "$C_RST" "$*"; }
 die() { log_err "$*"; exit 1; }
 
 # --- prompt: запрашивает строку, не пустую, с дефолтом $2 ---
+# Подсказка уходит в stderr, чтобы её не сожрал `$(...)` при capture.
 prompt() {
   local label="$1" default="${2:-}" answer
   if [[ -n "$default" ]]; then
-    printf "%s [%s]: " "$label" "$default"
+    printf "%s [%s]: " "$label" "$default" >&2
   else
-    printf "%s: " "$label"
+    printf "%s: " "$label" >&2
   fi
   if ! read -r answer; then
     # EOF: применяем дефолт если есть, иначе проваливаемся
@@ -37,19 +38,19 @@ prompt() {
 # --- prompt_secret: скрытый ввод (для паролей) ---
 prompt_secret() {
   local label="$1" answer
-  printf "%s: " "$label"
+  printf "%s: " "$label" >&2
   if ! read -rs answer; then
-    printf "\n"
+    printf "\n" >&2
     return 1
   fi
-  printf "\n"
+  printf "\n" >&2
   printf "%s" "$answer"
 }
 
 # --- prompt_confirm: y/N ---
 prompt_confirm() {
   local label="$1" default="${2:-N}" answer
-  printf "%s [y/N]: " "$label"
+  printf "%s [y/N]: " "$label" >&2
   if ! read -r answer; then return 1; fi
   [[ -z "$answer" ]] && answer="$default"
   [[ "$answer" =~ ^[Yy]$ ]]
@@ -62,7 +63,7 @@ prompt_choice() {
   local max="$1" answer
   CHOICE=0
   while :; do
-    printf "Select [0-%d]: " "$max"
+    printf "Select [0-%d]: " "$max" >&2
     if ! read -r answer; then
       log_warn "stdin closed, exiting."
       return 1
