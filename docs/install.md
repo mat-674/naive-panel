@@ -10,7 +10,7 @@
 ## Шаг 2. Установка одной командой
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mat-674/naive-panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/mat-674/naive-panel/refs/heads/master/install.sh | sudo bash
 ```
 
 Что делает:
