@@ -50,7 +50,7 @@ if [[ -d "$NAIVE_PANEL_DIR/lib" ]]; then
   source "$NAIVE_PANEL_DIR/lib/config.sh"
   # shellcheck source=lib/users.sh
   source "$NAIVE_PANEL_DIR/lib/users.sh"
-  for mod in caddy_config caddy_admin subscription qr traffic tls masquerade bootstrap uninstall; do
+  for mod in caddy_config caddy_admin subscription qr traffic tls masquerade bootstrap uninstall install upgrade; do
     [[ -f "$NAIVE_PANEL_DIR/lib/${mod}.sh" ]] && source "$NAIVE_PANEL_DIR/lib/${mod}.sh"
   done
   for fn in caddy_reload_safe _sub_show_creds _sub_show_uri _sub_show_qr _sub_show_loginpass _sub_show_json_all _sub_show_b64; do

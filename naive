@@ -58,7 +58,7 @@ if ! declare -F tls_issue >/dev/null; then tls_issue() { log_warn "tls: not impl
 # --- подкоманды-заглушки; реализация подключится в следующих шагах ---
 todo() { log_warn "[$1] not implemented yet — see plan task #$2"; }
 
-cmd_install()    { cmd_install_main; }
+cmd_install()    { lib_install_main; }
 cmd_uninstall()  { todo uninstall 14; }
 submenu_users()  { users_menu; }
 submenu_traffic(){ traffic_menu; }

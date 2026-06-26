@@ -2,7 +2,7 @@
 #
 # Вызывается из `naive install`. Все остальные lib/ уже подгружены.
 
-cmd_install() {
+lib_install_main() {
   require_root
   ensure_dirs
 
