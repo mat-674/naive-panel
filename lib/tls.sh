@@ -114,19 +114,22 @@ tls_issue() {
   return 0
 }
 
-# Установить сертификат в место, откуда caddy его подхватит
-# (мы используем встроенный ACME в caddy, поэтому просто копируем для бэкапа)
+# Установить сертификат в место, откуда caddy его подхватит (фиксированный путь,
+# на который ссылается caddy.json через __CERT_FILE__/__KEY_FILE__).
 tls_install_into_caddy() {
   local domain="$1"
   local src="$NAIVE_ACME_DIR/$domain"
-  local dst="$NAIVE_CA_DIR/live"
+  local dst="$NAIVE_CA_LIVE"
   mkdir -p "$dst"
   if [[ -f "$src/fullchain.cer" ]]; then
-    cp -f "$src/fullchain.cer" "$dst/$domain.crt"
-    cp -f "$src/$domain.key"   "$dst/$domain.key"
-    chmod 0644 "$dst/$domain.crt"
-    chmod 0600 "$dst/$domain.key"
-    log_ok "cert copied to $dst/$domain.crt"
+    cp -f "$src/fullchain.cer" "$dst/naive.crt"
+    cp -f "$src/$domain.key"   "$dst/naive.key"
+    chmod 0644 "$dst/naive.crt"
+    chmod 0600 "$dst/naive.key"
+    log_ok "cert copied to $dst/naive.crt"
+  else
+    log_err "no fullchain.cer at $src — was the cert issued?"
+    return 1
   fi
 }
 

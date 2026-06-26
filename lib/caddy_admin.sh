@@ -14,7 +14,13 @@ NAIVE_ADMIN_SOCK="${NAIVE_ADMIN_SOCK:-/var/run/caddy/admin.sock}"
 
 # caddy_reload_safe: перерендерить, провалидировать, мягко перезагрузить.
 # Возвращает 0 при успехе, 1 при отказе с rollback.
+# Оборачивается в with_lock — параллельные reload не должны гонять caddy.json
+# (например, юзер дважды Enter жмёт быстро, или внешний скрипт зовёт naive).
 caddy_reload_safe() {
+  with_lock _caddy_reload_unsafe
+}
+
+_caddy_reload_unsafe() {
   # 1) рендер
   if ! caddy_render; then
     log_err "render failed — aborting reload"

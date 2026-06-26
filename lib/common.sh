@@ -119,7 +119,25 @@ json_atomic() {
 #   1) flock(1) — нативно на Linux
 #   2) mkdir-as-lock — переносимо везде (атомарно на POSIX; на Windows mkdir
 #      тоже атомарен в рамках одной ФС — этого достаточно для single-user CLI).
+#
+# Реентрантно: вложенные вызовы fromнутри уже захваченного lock просто
+# выполняют функцию (lock держится внешним вызовом до выхода из него).
+# Без реентрантности сломалось бы: caddy_reload_safe → с внутри users_add_impl,
+# который сам под with_lock.
+_NAIVE_LOCK_DEPTH="${_NAIVE_LOCK_DEPTH:-0}"
+
 with_lock() {
+  _NAIVE_LOCK_DEPTH=$((_NAIVE_LOCK_DEPTH + 1))
+  local depth=$_NAIVE_LOCK_DEPTH
+
+  # Уже внутри lock (вложенный вызов) — просто исполняем, новый lock не берём.
+  if (( depth > 1 )); then
+    "$@"
+    local rc=$?
+    _NAIVE_LOCK_DEPTH=$((_NAIVE_LOCK_DEPTH - 1))
+    return $rc
+  fi
+
   local lockfile="${NAIVE_LOCK:-/var/lock/naive.lock}"
   [[ -d "$(dirname "$lockfile")" ]] || mkdir -p "$(dirname "$lockfile")"
 
@@ -127,26 +145,38 @@ with_lock() {
     exec 9>"$lockfile"
     flock -n 9 || die "another naive instance is running"
     "$@"
-    return $?
+    local rc=$?
+    exec 9>&- 2>/dev/null || true
+    _NAIVE_LOCK_DEPTH=0
+    return $rc
   fi
 
   # mkdir-fallback
   if mkdir "$lockfile.lock" 2>/dev/null; then
     # trap на EXIT снимет lock при выходе (включая crash через die→exit)
-    trap 'rmdir "${NAIVE_LOCK:-/var/lock/naive.lock}.lock" 2>/dev/null || true' EXIT
+    trap 'rmdir "${NAIVE_LOCK:-/var/lock/naive.lock}.lock" 2>/dev/null || true; _NAIVE_LOCK_DEPTH=0' EXIT
     "$@"
     local rc=$?
     rmdir "${NAIVE_LOCK:-/var/lock/naive.lock}.lock" 2>/dev/null || true
     trap - EXIT
+    _NAIVE_LOCK_DEPTH=0
     return $rc
   else
     die "another naive instance is running (lock: $lockfile.lock)"
   fi
 }
 
-# --- rand_password: 18 байт base64 (~144 бит энтропии), trim padding ---
+# --- rand_password: 20 алфавитно-цифровых символов (~120 бит энтропии) ---
+# Берём байты из /dev/urandom напрямую — гарантированная длина, не зависим
+# от поведения base64-padding (openssl|tr|cut мог дать <20 символов).
+# Fallback на openssl для систем без /dev/urandom.
 rand_password() {
-  openssl rand -base64 18 | tr -d '=/+\n' | cut -c1-20
+  local out
+  out=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 20)
+  if [[ ${#out} -lt 8 ]]; then
+    out=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 20)
+  fi
+  printf '%s' "$out"
 }
 
 # --- banner: ASCII-шапка в каждом подменю ---

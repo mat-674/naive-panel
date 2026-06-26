@@ -48,17 +48,26 @@ assert_eq "$creds" "[]" "auth_credentials empty when no users"
 handler_type=$(jq -r '.apps.http.servers.proxy.routes[0].handle[0].handler' "$NAIVE_CADDY_JSON")
 assert_eq "$handler_type" "file_server" "default masquerade uses file_server"
 
-# Проверка подстановки domain
-domain=$(jq -r '.apps.tls.certificates.automate[0]' "$NAIVE_CADDY_JSON")
-assert_eq "$domain" "example.com" "domain substituted"
-
-# Проверка email
-email=$(jq -r '.apps.tls.automation.policies[0].issuers[0].email' "$NAIVE_CADDY_JSON")
-assert_eq "$email" "admin@example.com" "email substituted"
+# Проверка подстановки domain (теперь через match SNI, см. tls_connection_policies)
+domain=$(jq -r '.apps.http.servers.proxy.tls_connection_policies[0].match.sni[0]' "$NAIVE_CADDY_JSON")
+assert_eq "$domain" "example.com" "domain substituted in SNI match"
 
 # Проверка log path
 logpath=$(jq -r '.logging.logs.access.output' "$NAIVE_CADDY_JSON")
 assert_eq "$logpath" "file://$NAIVE_LOG_DIR/access.log" "log path substituted"
+
+# Проверка путей к сертификату (теперь Caddy подхватывает cert через load_files)
+certfile=$(jq -r '.apps.tls.certificates.load_files[0].certificate' "$NAIVE_CADDY_JSON")
+keyfile=$(jq -r '.apps.tls.certificates.load_files[0].key' "$NAIVE_CADDY_JSON")
+assert_eq "$certfile" "$NAIVE_CERT_FILE" "cert file path substituted"
+assert_eq "$keyfile"  "$NAIVE_KEY_FILE"  "key file path substituted"
+
+# Проверка что встроенный ACME удалён (ранее был тут .apps.tls.automation)
+if jq -e '.apps.tls.automation' "$NAIVE_CADDY_JSON" >/dev/null 2>&1; then
+  fail "inbuilt ACME automation should be removed"
+else
+  pass "no inbuilt ACME automation (single source: acme.sh)"
+fi
 
 # --- сценарий 2: тот же domain + 2 users ---
 users_add alice "Pa55!"

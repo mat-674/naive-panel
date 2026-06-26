@@ -20,56 +20,56 @@ set -euo pipefail
 
 # lib/ подгружаются ниже (при склейке install.sh добавляет их в этот файл).
 # В режиме разработки — source'им их напрямую, если запущены из git tree.
+# Auto-discovery: подхватываем любые lib/*.sh, не хардкодим список.
+# common.sh и config.sh source'ятся ПЕРВЫМИ явно — от них зависят все остальные
+# (NAIVE_* пути, логгер, prompt), и glob-порядок не гарантирован.
 if [[ -d "${BASH_SOURCE[0]%/*}/lib" ]]; then
+  _naive_lib_dir="${BASH_SOURCE[0]%/*}/lib"
   # shellcheck source=lib/common.sh
-  source "${BASH_SOURCE[0]%/*}/lib/common.sh"
+  source "$_naive_lib_dir/common.sh"
   # shellcheck source=lib/config.sh
-  source "${BASH_SOURCE[0]%/*}/lib/config.sh"
-  # shellcheck source=lib/users.sh
-  source "${BASH_SOURCE[0]%/*}/lib/users.sh"
+  source "$_naive_lib_dir/config.sh"
+  for f in "$_naive_lib_dir/"*.sh; do
+    [[ -f "$f" ]] || continue
+    case "$(basename "$f")" in
+      common.sh|config.sh) ;;  # уже загружены
+      *) source "$f" ;;
+    esac
+  done
+  unset _naive_lib_dir
 fi
 
-# --- позднее подключение модулей: каждый — no-op заглушка, если не найден ---
-for mod in caddy_config caddy_admin subscription qr traffic tls masquerade bootstrap uninstall install upgrade; do
-  if [[ -f "${BASH_SOURCE[0]%/*}/lib/${mod}.sh" ]]; then
-    # shellcheck source=lib/caddy_admin.sh
-    # shellcheck source=lib/subscription.sh
-    # shellcheck source=lib/qr.sh
-    # shellcheck source=lib/traffic.sh
-    # shellcheck source=lib/tls.sh
-    # shellcheck source=lib/masquerade.sh
-    # shellcheck source=lib/bootstrap.sh
-    # shellcheck source=lib/uninstall.sh
-    source "${BASH_SOURCE[0]%/*}/lib/${mod}.sh"
-  fi
-done
+# Заглушки — перекрываются реальными из lib/*.sh при их наличии.
+# Один паттерн: declare -F guard + сообщение "не реализовано".
+_naive_stub() { log_warn "naive: '$1' not implemented (missing lib module?)"; }
+_naive_stub_q() { return 0; }   # тихий stub (для функций-хелперов, не критичных для UX)
 
-# Заглушки для ещё-не-реализованных команд — перекрываются реальными lib/*.sh
-# при их наличии.
-if ! declare -F caddy_reload_safe >/dev/null; then caddy_reload_safe() { return 0; }; fi
-if ! declare -F _sub_show_creds >/dev/null; then _sub_show_creds() { log_warn "subscription: not implemented"; }; fi
-if ! declare -F _sub_show_uri >/dev/null; then _sub_show_uri() { log_warn "subscription: not implemented"; }; fi
-if ! declare -F _sub_show_qr >/dev/null; then _sub_show_qr() { log_warn "subscription/qr: not implemented"; }; fi
-if ! declare -F _sub_show_loginpass >/dev/null; then _sub_show_loginpass() { log_warn "subscription: not implemented"; }; fi
-if ! declare -F _sub_show_json_all >/dev/null; then _sub_show_json_all() { log_warn "subscription: not implemented"; }; fi
-if ! declare -F _sub_show_b64 >/dev/null; then _sub_show_b64() { log_warn "subscription: not implemented"; }; fi
-if ! declare -F tls_issue >/dev/null; then tls_issue() { log_warn "tls: not implemented"; }; fi
+if ! declare -F caddy_reload_safe >/dev/null; then caddy_reload_safe() { _naive_stub_q; }; fi
+if ! declare -F _sub_show_creds     >/dev/null; then _sub_show_creds()     { _naive_stub "subscription/creds"; }; fi
+if ! declare -F _sub_show_uri       >/dev/null; then _sub_show_uri()       { _naive_stub "subscription/uri"; }; fi
+if ! declare -F _sub_show_qr        >/dev/null; then _sub_show_qr()        { _naive_stub "subscription/qr"; }; fi
+if ! declare -F _sub_show_loginpass >/dev/null; then _sub_show_loginpass() { _naive_stub "subscription/loginpass"; }; fi
+if ! declare -F _sub_show_json_all  >/dev/null; then _sub_show_json_all()  { _naive_stub "subscription/json"; }; fi
+if ! declare -F _sub_show_b64       >/dev/null; then _sub_show_b64()       { _naive_stub "subscription/b64"; }; fi
+if ! declare -F tls_issue           >/dev/null; then tls_issue()           { _naive_stub "tls_issue"; }; fi
+if ! declare -F cmd_uninstall       >/dev/null; then cmd_uninstall()       { _naive_stub "uninstall"; }; fi
+if ! declare -F cmd_restart         >/dev/null; then cmd_restart()         { _naive_stub "restart"; }; fi
+if ! declare -F cmd_reload          >/dev/null; then cmd_reload()          { _naive_stub "reload"; }; fi
+if ! declare -F cmd_log             >/dev/null; then cmd_log()             { _naive_stub "log"; }; fi
 
-# --- подкоманды-заглушки; реализация подключится в следующих шагах ---
-todo() { log_warn "[$1] not implemented yet — see plan task #$2"; }
+# Эти функции переопределяются только если соответствующий модуль не source'нут.
+# (lib/users.sh определяет users_menu, lib/install.sh — lib_install_main и т.д.)
+if ! declare -F submenu_users    >/dev/null; then submenu_users()    { _naive_stub "users menu"; }; fi
+if ! declare -F submenu_traffic  >/dev/null; then submenu_traffic()  { _naive_stub "traffic menu"; }; fi
+if ! declare -F submenu_tls      >/dev/null; then submenu_tls()      { _naive_stub "tls menu"; }; fi
+if ! declare -F submenu_masquerade >/dev/null; then submenu_masquerade() { _naive_stub "masquerade menu"; }; fi
+if ! declare -F info_summary     >/dev/null; then info_summary()     { _naive_stub "info_summary"; }; fi
+if ! declare -F dispatch_upgrade >/dev/null; then dispatch_upgrade() { _naive_stub "upgrade"; }; fi
 
-cmd_install()    { lib_install_main; }
-cmd_uninstall()  { todo uninstall 14; }
-submenu_users()  { users_menu; }
-submenu_traffic(){ traffic_menu; }
-submenu_tls()    { tls_menu; }
-submenu_masquerade(){ masquerade_menu; }
-cmd_restart()    { todo restart 5; }
-cmd_reload()     { todo reload 5; }
-cmd_log()        { todo log 7; }
-cmd_info()       { info_summary; }
-cmd_upgrade()    { dispatch_upgrade "$@"; }
-cmd_version()    { printf "%s v%s\n" "$NAIVE_TITLE" "$NAIVE_VERSION"; }
+# Установка и версия — простые команды, не подменяются модулями.
+cmd_install() { lib_install_main; }
+cmd_info()    { info_summary; }
+cmd_version() { printf "%s v%s\n" "$NAIVE_TITLE" "$NAIVE_VERSION"; }
 usage() {
   cat <<EOF
 Usage: naive [command]

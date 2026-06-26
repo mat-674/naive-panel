@@ -17,6 +17,8 @@ lib_install_main() {
   if ! [[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
     die "invalid domain '$domain' (allowed: letters/digits/dots/dashes, no leading or trailing dash)"
   fi
+  # Email всё ещё нужен для acme.sh (LE account registration), но больше не идёт
+  # в caddy.json — проверяем формат, чтобы мусор не упал в acme.sh.
   email=$(prompt "Email for Let's Encrypt" "$NAIVE_EMAIL")
   [[ -z "$email" ]] && die "email is required for LE registration"
   if ! [[ "$email" =~ ^[^[:space:]@\"\'\`\\|$,]+@[^[:space:]@\"\'\`\\|$,]+\.[A-Za-z]{2,}$ ]]; then
@@ -86,7 +88,8 @@ EOF
     ufw allow 443/tcp >/dev/null 2>&1 || true
   fi
 
-  # 8) Render + validate + start
+  # 8) Render caddy.json (без старта — серта ещё нет).
+  #    Caddy теперь читает cert через load_files, поэтому без серта не стартанёт.
   caddy_render
   caddy_validate || log_warn "caddy validate failed — check before starting service"
 
@@ -94,19 +97,36 @@ EOF
   if ! systemctl is-enabled --quiet naive-caddy 2>/dev/null; then
     systemctl enable naive-caddy
   fi
-  systemctl restart naive-caddy
-  sleep 2
-  if systemctl is-active --quiet naive-caddy; then
-    log_ok "naive-caddy is running"
-  else
-    log_err "naive-caddy failed to start — check: journalctl -u naive-caddy -n 50"
+
+  # 9) TLS через acme.sh (HTTP-01). tls_issue сам стопит caddy ради 80/tcp,
+  #    выпускает серт и кладёт его в $NAIVE_CA_LIVE/naive.crt — путь, на
+  #    который ссылается caddy.json.
+  log_step "Requesting Let's Encrypt certificate for $domain"
+  if ! tls_issue "$domain" "$email"; then
+    log_err "TLS issuance failed — caddy will NOT start (no certificate)"
+    log_err "fix the issue (see acme.sh logs), then:"
+    log_err "  sudo naive tls issue"
+    log_err "  sudo systemctl restart naive-caddy"
+    return 1
   fi
 
-  # 9) Выпуск TLS через acme.sh (HTTP-01)
-  log_step "Requesting Let's Encrypt certificate for $domain"
-  tls_issue "$domain" "$email"
+  # 10) Стартуем caddy (он уже подхватит свежий cert через load_files).
+  #     Если уже работал (re-install) — caddy_reload_safe мягко reload'нет.
+  log_step "Starting naive-caddy"
+  if systemctl is-active --quiet naive-caddy 2>/dev/null; then
+    caddy_reload_safe || systemctl restart naive-caddy
+  else
+    systemctl restart naive-caddy
+    sleep 2
+    if systemctl is-active --quiet naive-caddy; then
+      log_ok "naive-caddy is running"
+    else
+      log_err "naive-caddy failed to start — check: journalctl -u naive-caddy -n 50"
+      return 1
+    fi
+  fi
 
-  # 10) Финал — показать URI первого юзера
+  # 11) Финал — показать URI первого юзера
   banner "Ready"
   cat <<EOF
   Domain:     https://$domain

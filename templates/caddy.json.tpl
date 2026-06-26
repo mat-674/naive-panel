@@ -49,19 +49,10 @@
     },
     "tls": {
       "certificates": {
-        "automate": ["__DOMAIN__"]
-      },
-      "automation": {
-        "policies": [
+        "load_files": [
           {
-            "issuers": [
-              {
-                "module": "acme",
-                "email": "__EMAIL__",
-                "ca": "https://acme-v02.api.letsencrypt.org/directory",
-                "challenges": { "http": { "alternate_port": 80 } }
-              }
-            ]
+            "certificate": "__CERT_FILE__",
+            "key": "__KEY_FILE__"
           }
         ]
       }

@@ -69,9 +69,10 @@ caddy_render() {
     -e $'s\x1f__USER_CREDS__\x1f'"$creds"$'\x1fg' \
     -e $'s\x1f__MASQUERADE_HANDLER__\x1f'"$handler"$'\x1fg' \
     -e $'s\x1f__DOMAIN__\x1f'"$NAIVE_DOMAIN"$'\x1fg' \
-    -e $'s\x1f__EMAIL__\x1f'"$NAIVE_EMAIL"$'\x1fg' \
     -e $'s\x1f__LOG_DIR__\x1f'"$NAIVE_LOG_DIR"$'\x1fg' \
     -e $'s\x1f__BIND_PORT__\x1f'"${NAIVE_BIND_PORT:-443}"$'\x1fg' \
+    -e $'s\x1f__CERT_FILE__\x1f'"$NAIVE_CERT_FILE"$'\x1fg' \
+    -e $'s\x1f__KEY_FILE__\x1f'"$NAIVE_KEY_FILE"$'\x1fg' \
     "$tmpl")
 
   # Валидация синтаксиса JSON (без caddy — на CI, где caddy не установлен)
