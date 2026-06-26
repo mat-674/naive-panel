@@ -16,7 +16,7 @@
     "http": {
       "servers": {
         "proxy": {
-          "listen": [":443"],
+          "listen": [":__BIND_PORT__"],
           "logs": { "default_logger_name": "access" },
           "automatic_https": { "disable": true },
           "routes": [

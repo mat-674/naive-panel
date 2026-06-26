@@ -62,12 +62,16 @@ caddy_render() {
   creds=$(_user_creds_json)
   handler=$(_masquerade_handler "$NAIVE_MASQUERADE_KIND" "$NAIVE_MASQUERADE" "$NAIVE_MASQUERADE_URL")
 
+  # Используем редкий разделитель (\x1F, ASCII Unit Separator) вместо '|',
+  # чтобы пароли с вертикальной чертой или JSON-пайплайны не ломали sed.
+  # $'...' нужно чтобы bash раскрыл \x1F (внутри "..." он литерален).
   rendered=$(sed \
-    -e "s|__USER_CREDS__|$creds|g" \
-    -e "s|__MASQUERADE_HANDLER__|$handler|g" \
-    -e "s|__DOMAIN__|$NAIVE_DOMAIN|g" \
-    -e "s|__EMAIL__|$NAIVE_EMAIL|g" \
-    -e "s|__LOG_DIR__|$NAIVE_LOG_DIR|g" \
+    -e $'s\x1f__USER_CREDS__\x1f'"$creds"$'\x1fg' \
+    -e $'s\x1f__MASQUERADE_HANDLER__\x1f'"$handler"$'\x1fg' \
+    -e $'s\x1f__DOMAIN__\x1f'"$NAIVE_DOMAIN"$'\x1fg' \
+    -e $'s\x1f__EMAIL__\x1f'"$NAIVE_EMAIL"$'\x1fg' \
+    -e $'s\x1f__LOG_DIR__\x1f'"$NAIVE_LOG_DIR"$'\x1fg' \
+    -e $'s\x1f__BIND_PORT__\x1f'"${NAIVE_BIND_PORT:-443}"$'\x1fg' \
     "$tmpl")
 
   # Валидация синтаксиса JSON (без caddy — на CI, где caddy не установлен)

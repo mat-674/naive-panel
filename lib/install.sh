@@ -12,8 +12,16 @@ lib_install_main() {
   log_step "TLS mode: domain (LE via acme.sh HTTP-01)"
   domain=$(prompt "Domain (e.g. proxy.example.com)" "$NAIVE_DOMAIN")
   [[ -z "$domain" ]] && die "domain is required"
+  # Безопасная валидация: только то что может попасть в sed/JSON/cert
+  # (исключаем |, \, ", ', $ и т.п. — иначе подстановка в caddy.json сломается)
+  if ! [[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
+    die "invalid domain '$domain' (allowed: letters/digits/dots/dashes, no leading or trailing dash)"
+  fi
   email=$(prompt "Email for Let's Encrypt" "$NAIVE_EMAIL")
   [[ -z "$email" ]] && die "email is required for LE registration"
+  if ! [[ "$email" =~ ^[^[:space:]@\"\'\`\\|$,]+@[^[:space:]@\"\'\`\\|$,]+\.[A-Za-z]{2,}$ ]]; then
+    die "invalid email '$email'"
+  fi
 
   NAIVE_MODE="domain"
   NAIVE_DOMAIN="$domain"

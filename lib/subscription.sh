@@ -97,9 +97,10 @@ _sub_show_uri()       { sub_uri      "$1"; }
 _sub_show_loginpass() { sub_loginpass "$1"; }
 _sub_show_qr()        { qr_uri       "$1"; }
 _sub_show_json_single() {
-  local name="$1" out="/tmp/naive-client-$name.json"
-  sub_naive_json_one "$name" | tee "$out"
-  printf "\n  saved to %s\n" "$out"
+  local name="$1"
+  sub_naive_json_one "$name"
+  printf "\n  ↑ save with:  naive-client-%s.json > '/path/naive-client-%s.json'\n" "$name" "$name"
+  log_warn "JSON содержит пароль в plaintext — не оставляйте файл в /tmp"
 }
 _sub_show_json_all()  {
   printf "Choose: 1) single user, 2) all users (array)\n"
@@ -108,15 +109,18 @@ _sub_show_json_all()  {
     1)
       local n; n=$(prompt "Username" "")
       [[ -z "$n" ]] && return
-      sub_naive_json_one "$n" | tee /tmp/naive-client-$n.json
-      printf "\n  saved to /tmp/naive-client-$n.json\n"
+      sub_naive_json_one "$n"
+      printf "\n  ↑ save with:  ... > '/path/naive-client-%s.json'\n" "$n"
+      log_warn "JSON содержит пароли в plaintext — не оставляйте файл в /tmp"
       ;;
-    2) sub_naive_json_all | tee /tmp/naive-clients.json
-       printf "\n  saved to /tmp/naive-clients.json\n"
+    2) sub_naive_json_all
+       printf "\n  ↑ save with:  ... > '/path/naive-clients.json'\n"
+       log_warn "JSON содержит пароли в plaintext — не оставляйте файл в /tmp"
        ;;
   esac
 }
 _sub_show_b64() {
   sub_b64
   printf "\n  ↑ base64 list of all users (paste into subscription URL)\n"
+  log_warn "base64 — не шифрование, пароли читаются после декодирования"
 }

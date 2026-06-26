@@ -88,7 +88,6 @@ _users_add_impl() {
     | _users_write
 
   log_ok "user '$name' added"
-  printf "%s\n" "$pass" > /tmp/naive-last-pass.$$
   log_info "password: $pass"
 }
 
@@ -281,25 +280,9 @@ _users_ui_delete_one() {
   log_ok "user '$name' deleted"
 }
 
-# --- оставлены для обратной совместимости со старыми _users_ui_* вызовами ---
-# (раньше users_menu вызывал _users_ui_creds и т.п. напрямую — теперь эти
-# функции вызываются из _users_user_menu с уже известным именем.)
-
-_users_ui_creds()      { local n; n=$(prompt "Username" ""); [[ -n "$n" ]] && _sub_show_creds "$n"; }
-_users_ui_uri()        { local n; n=$(prompt "Username" ""); [[ -n "$n" ]] && _sub_show_uri   "$n"; }
-_users_ui_qr()         { local n; n=$(prompt "Username" ""); [[ -n "$n" ]] && _sub_show_qr    "$n"; }
-_users_ui_loginpass()  { local n; n=$(prompt "Username" ""); [[ -n "$n" ]] && _sub_show_loginpass "$n"; }
-_users_ui_json()       { _sub_show_json_all; }
-_users_ui_b64()        { _sub_show_b64; }
-
-# _sub_show_json_single: per-user JSON-конфиг (для пункта 7 в user-меню)
-# Объявлен как no-op здесь, перекрывается в lib/subscription.sh если есть.
-if ! declare -F _sub_show_json_single >/dev/null; then
-  _sub_show_json_single() { log_warn "_sub_show_json_single not implemented"; }
-fi
-
-# --- UI-обработчики (вызывают lib/subscription.sh, lib/qr.sh) ---
-# Каждый — обёртка над интерактивным вводом + соответствующей функцией.
+# --- UI-обработчики добавления (вызывает users_add + reload) ---
+# Все операции "показать credentials/URI/QR/JSON/b64" вызываются напрямую
+# из _users_user_menu через _sub_show_* — обёртки _users_ui_* не нужны.
 
 _users_ui_add() {
   local name pass
@@ -315,54 +298,11 @@ _users_ui_add() {
   caddy_reload_safe || log_warn "config reload failed — fix manually"
 }
 
-_users_ui_delete() {
-  local name
-  name=$(prompt "Username to delete" "")
-  [[ -z "$name" ]] && return
-  if ! users_exists "$name"; then log_err "user '$name' not found"; return 1; fi
-  prompt_confirm "Really delete '$name'? [y/N]" N || return
-  users_delete "$name" || return 1
-  caddy_reload_safe || log_warn "config reload failed"
-}
-
-_users_ui_rename() {
-  local old new
-  old=$(prompt "Old username" "")
-  new=$(prompt "New username" "")
-  [[ -z "$old" || -z "$new" ]] && return
-  users_rename "$old" "$new" || return 1
-  caddy_reload_safe || log_warn "config reload failed"
-}
-
-_users_ui_reset() {
-  local name pass
-  name=$(prompt "Username" "")
-  [[ -z "$name" ]] && return
-  if prompt_confirm "Generate random password? [Y/n]" Y; then
-    pass=""
-  else
-    pass=$(prompt_secret "New password (min 8 chars)")
-    [[ "${#pass}" -lt 8 ]] && { log_err "password too short"; return 1; }
-  fi
-  users_reset_pass "$name" "$pass" || return 1
-  caddy_reload_safe || log_warn "config reload failed"
-}
-
-_users_ui_creds()   { _users_ui_pick_user _sub_show_creds; }
-_users_ui_uri()     { _users_ui_pick_user _sub_show_uri; }
-_users_ui_qr()      { _users_ui_pick_user _sub_show_qr; }
-_users_ui_loginpass(){ _users_ui_pick_user _sub_show_loginpass; }
-_users_ui_json()    { _sub_show_json_all; }
-_users_ui_b64()     { _sub_show_b64; }
-
-# _users_ui_pick_user: общий ввод имени (для одиночных подменю)
-_users_ui_pick_user() {
-  local fn="$1" name
-  name=$(prompt "Username" "")
-  [[ -z "$name" ]] && return
-  if ! users_exists "$name"; then log_err "user '$name' not found"; return 1; fi
-  "$fn" "$name"
-}
+# _sub_show_json_single: per-user JSON-конфиг (для пункта 7 в user-меню)
+# Объявлен как no-op здесь, перекрывается в lib/subscription.sh если есть.
+if ! declare -F _sub_show_json_single >/dev/null; then
+  _sub_show_json_single() { log_warn "_sub_show_json_single not implemented"; }
+fi
 
 # --- info_summary: для cmd_info (пункт 9 главного меню) ---
 info_summary() {
